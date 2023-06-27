@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.lerolero.adverbs.repositories.MongoAdverbRepository;
+import com.lerolero.adverbs.repositories.AdverbCache;
 import com.lerolero.adverbs.models.Adverb;
 
 @Service
@@ -15,10 +16,19 @@ public class AdverbService {
 	@Autowired
 	private MongoAdverbRepository repo;
 
+	@Autowired
+	private AdverbCache cache;
+
 	private String next() {
-		return repo.pullRandom()
-			.orElseThrow(() -> new RuntimeException("No adverb available"))
-			.getString();
+		Adverb adverb;
+		try {
+			adverb = cache.next();
+		} catch (AdverbCache.CacheMissException e) {
+			adverb = repo.findById(e.getKey())
+				.orElseThrow(() -> new RuntimeException("No adverb available"));
+			cache.add(adverb);
+		}
+		return adverb.getString();
 	}
 
 	public String randomAdverb() {
